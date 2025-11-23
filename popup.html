@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      width: 300px;
+      padding: 15px;
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    }
+
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 8px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      box-sizing: border-box;
+      font-size: 13px;
+    }
+
+    input:focus {
+      border-color: #2196F3;
+      outline: none;
+    }
+
+    .on {
+      background-color: #4caf50;
+    }
+
+    .off {
+      background-color: #f44336;
+    }
+
+    .reset {
+      background-color: #ff9800;
+      font-size: 12px;
+      padding: 8px;
+    }
+
+    .save-folder {
+      background-color: #2196F3;
+      font-size: 12px;
+      padding: 8px;
+      width: auto !important;
+    }
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    p {
+      margin: 8px 0;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: bold;
+      display: block;
+      text-align: left;
+      margin-bottom: 4px;
+      color: #555;
+    }
+
+    .counter {
+      font-weight: bold;
+      color: #2196F3;
+      font-size: 16px;
+    }
+
+    .section {
+      margin-bottom: 12px;
+    }
+
+    .folder-row {
+      display: flex;
+      gap: 5px;
+      align-items: flex-start;
+    }
+
+    .folder-status {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>Auto Downloader </h3>
+
+  <div class="section">
+    <p id="status-text">Trạng thái: TẮT</p>
+    <p>File tiếp theo: <span id="counter-text" class="counter">1</span></p>
+  </div>
+
+  <div class="section">
+    <label for="folder-input">📁 Tên thư mục:</label>
+    <div class="folder-row">
+      <input type="text" id="folder-input" placeholder="VD: MyImages" style="flex: 1;" />
+      <button id="save-folder-btn" class="save-folder">💾 Lưu</button>
+    </div>
+    <p class="folder-status">Đang lưu vào: <strong id="current-folder">AutoCaptured</strong></p>
+  </div>
+
+  <div class="section" id="picrew-info" style="background: #e3f2fd; padding: 8px; border-radius: 5px;">
+    <p style="margin: 4px 0; font-size: 12px; color: #1976d2;">
+      🎨 <strong>Picrew Mode</strong>
+    </p>
+    <div id="picrew-data" style="display: none;">
+      <p style="margin: 4px 0; font-size: 11px; color: #555;">
+        Maker: <strong id="picrew-maker">-</strong>
+      </p>
+      <p style="margin: 4px 0; font-size: 11px; color: #555;">
+        Màu: <span id="picrew-color-preview"
+          style="display: inline-block; width: 12px; height: 12px; border: 1px solid #999; vertical-align: middle;"></span>
+        <strong id="picrew-color">-</strong>
+      </p>
+
+      <div id="picrew-controls" style="margin-top: 8px; border-top: 1px solid #bbdefb; padding-top: 8px;">
+        <button id="auto-crawl-btn" style="background: #1976d2; font-size: 12px; margin-bottom: 4px;">⚡ Tải Tất Cả
+          Màu</button>
+        <label style="display: flex; align-items: center; font-size: 11px; color: #555; margin: 4px 0; cursor: pointer;">
+          <input type="checkbox" id="auto-next-item" style="margin-right: 6px; cursor: pointer;">
+          🔄 Tự động chuyển Item tiếp theo
+        </label>
+        <p id="crawl-status" style="font-size: 10px; color: #555; margin: 0;">(Chọn 1 Item rồi bấm nút này)</p>
+      </div>
+    </div>
+    <p id="picrew-placeholder" style="margin: 4px 0; font-size: 11px; color: #777; font-style: italic;">
+      (Vào trang Picrew để kích hoạt)
+    </p>
+  </div>
+
+  <button id="toggle-btn" class="off">BẬT LÊN</button>
+  <button id="reset-btn" class="reset">🔄 Reset về 1</button>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Auto Save Network Image",
+  "version": "1.0",
+  "description": "Tự động tải ảnh khi phát hiện request trong Network tab",
+  "permissions": [
+    "webRequest",
+    "downloads",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://picrew.me/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
