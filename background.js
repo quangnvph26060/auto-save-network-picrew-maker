@@ -145,7 +145,7 @@ chrome.webRequest.onCompleted.addListener(
           saveAs: false
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
-            console.error("❌ Download error:", chrome.runtime.lastError.message);
+            // console.error("❌ Download error:", chrome.runtime.lastError.message);
           } else if (downloadId) {
             console.log(`✅ Download started: ${fullPath} (ID: ${downloadId})`);
             // Tăng counter sau khi tải thành công

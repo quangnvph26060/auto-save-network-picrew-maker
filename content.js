@@ -117,14 +117,9 @@ function sendColorInfo() {
                 type: 'COLOR_SELECTED',
                 makerID: maker,
                 color: color
-            }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.warn("⚠️ Error sending color info:", chrome.runtime.lastError.message);
-                } else {
-                    currentColor = color.hex;
-                    makerID = maker;
-                }
             });
+            currentColor = color.hex;
+            makerID = maker;
         } catch (e) {
             console.warn("⚠️ Failed to send color info:", e.message);
         }
@@ -221,6 +216,30 @@ function scanAndLogColors(isAuto = false) {
             console.log("✅ Auto-detected color palette.");
         }
 
+        // LOG RA CÁC LAYER (Nếu có)
+        const layers = getAllLayers();
+        if (layers.length > 0) {
+            console.group("📋 Detected Layers in Current Slide:");
+            layers.forEach((layer, index) => {
+                const dataKey = layer.getAttribute('data-key');
+                const isSelected = layer.classList.contains('selected');
+                const title = layer.title || layer.getAttribute('aria-label') || 'N/A';
+                console.log(`${index + 1}. data-key="${dataKey}" | selected=${isSelected} | title="${title}"`);
+            });
+            console.groupEnd();
+            
+            // Log layer hiện tại
+            const currentLayer = layers.find(l => l.classList.contains('selected'));
+            if (currentLayer) {
+                const layerName = getCurrentLayerName();
+                console.log(`✅ Current Layer: ${layerName || 'N/A'} (data-key: ${currentLayer.getAttribute('data-key')})`);
+            } else {
+                console.log("⚠️ No layer is currently selected");
+            }
+        } else {
+            console.log("ℹ️ No layers detected (single layer item)");
+        }
+
         // QUAN TRỌNG: Tự động gửi màu đang selected về background để tạo folder
         // Tìm màu đang được chọn (selected) trong danh sách colors
         const selectedColorLi = colors.find(li => li.classList.contains('selected'));
@@ -268,18 +287,13 @@ function scanAndLogColors(isAuto = false) {
                         color: colorToSend,
                         itemName: itemName,
                         layerName: layerName
-                    }, (response) => {
-                        if (chrome.runtime.lastError) {
-                            console.warn("⚠️ Error sending message:", chrome.runtime.lastError.message);
-                        } else {
-                            currentColor = colorToSend.hex;
-                            makerID = maker;
-                            currentItemName = itemName;
-                            currentLayerName = layerName;
-                        }
                     });
+                    currentColor = colorToSend.hex;
+                    makerID = maker;
+                    currentItemName = itemName;
+                    currentLayerName = layerName;
                 } catch (e) {
-                    console.warn("⚠️ Failed to send message:", e.message);
+                    // console.warn("⚠️ Failed to send message:", e.message);
                 }
             }
         }
@@ -465,9 +479,41 @@ async function startAutoCrawl(shouldAutoNext = false) {
     const colors = scanAndLogColors();
 
     if (colors.length === 0) {
-        alert("❌ Không tìm thấy bảng màu nào! Hãy chắc chắn bạn đã chọn Item.");
-        isCrawling = false;
-        return;
+        console.log("⚠️ Không tìm thấy bảng màu cho layer này!");
+        
+        // Nếu bật auto-next, tự động chuyển sang layer/item tiếp theo
+        if (autoNextItem) {
+            console.log("🔄 Auto-skipping to next layer/item...");
+            isCrawling = false;
+            
+            // Thử chuyển sang layer tiếp theo
+            const nextLayer = getNextLayer();
+            if (nextLayer) {
+                console.log("➡️ Moving to next layer...");
+                nextLayer.click();
+                await new Promise(r => setTimeout(r, 1000));
+                startAutoCrawl(true);
+                return;
+            }
+            
+            // Nếu không còn layer, chuyển sang item tiếp theo
+            const nextItem = getNextItem();
+            if (nextItem) {
+                console.log("➡️ Moving to next item...");
+                nextItem.click();
+                await new Promise(r => setTimeout(r, 1000));
+                startAutoCrawl(true);
+                return;
+            }
+            
+            // Nếu hết cả layer và item
+            alert("✅ Đã hoàn thành tất cả!");
+            return;
+        } else {
+            alert("❌ Không tìm thấy bảng màu nào! Hãy chắc chắn bạn đã chọn Item.");
+            isCrawling = false;
+            return;
+        }
     }
 
     const currentItem = getCurrentSelectedItem();
@@ -501,13 +547,9 @@ async function startAutoCrawl(shouldAutoNext = false) {
                     },
                     itemName: itemName,
                     layerName: layerName
-                }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.warn("⚠️ Error sending message:", chrome.runtime.lastError.message);
-                    }
                 });
             } catch (e) {
-                console.warn("⚠️ Failed to send message:", e.message);
+                // console.warn("⚠️ Failed to send message:", e.message);
             }
         }
 
@@ -636,13 +678,88 @@ async function startAutoCrawl(shouldAutoNext = false) {
     }
 }
 
+// Hàm log thông tin khi click vào layer
+function logLayerClickInfo(layerElement) {
+    console.log("═══════════════════════════════════════════════");
+    console.log("🎯 LAYER CLICKED!");
+    console.log("═══════════════════════════════════════════════");
+    
+    // 1. Thông tin layer chính
+    const layerName = getCurrentLayerName() || getLayerName(layerElement);
+    const dataKey = layerElement.getAttribute('data-key');
+    const isSelected = layerElement.classList.contains('selected');
+    
+    console.log("\n📌 LAYER INFO:");
+    console.log(`   Name: ${layerName}`);
+    console.log(`   data-key: ${dataKey}`);
+    console.log(`   Selected: ${isSelected}`);
+    
+    // 2. Tất cả layer trong slide hiện tại
+    const allLayers = getAllLayers();
+    console.log("\n📋 ALL LAYERS IN CURRENT SLIDE:");
+    allLayers.forEach((layer, index) => {
+        const name = getLayerName(layer);
+        const key = layer.getAttribute('data-key');
+        const selected = layer.classList.contains('selected');
+        const isCurrent = layer === layerElement;
+        console.log(`   ${index + 1}. ${name} (${key}) ${selected ? '✅' : '⬜'} ${isCurrent ? '👈 CURRENT' : ''}`);
+    });
+    
+    // 3. Sub-layers (nếu có nhiều layer trong cùng ul)
+    const parentUl = layerElement.closest('ul');
+    if (parentUl) {
+        const subLayers = Array.from(parentUl.querySelectorAll('li[data-key]')).filter(li => {
+            const isRemoveItem = li.classList.contains('remove_item');
+            const isColor = li.closest('.imagemaker_colorBox') || 
+                          (li.style.background && li.style.background.includes('rgb'));
+            return !isRemoveItem && !isColor;
+        });
+        
+        if (subLayers.length > 1) {
+            console.log("\n🔸 SUB-LAYERS (Layer con trong cùng UL):");
+            subLayers.forEach((subLayer, index) => {
+                const name = getLayerName(subLayer);
+                const key = subLayer.getAttribute('data-key');
+                const selected = subLayer.classList.contains('selected');
+                console.log(`   ${index + 1}. ${name} (${key}) ${selected ? '✅' : '⬜'}`);
+            });
+        }
+    }
+    
+    // 4. Bảng màu hiện tại
+    const colors = scanAndLogColors(false);
+    
+    // 5. Cấu trúc folder đề xuất
+    const makerID = getMakerID() || 'Unknown';
+    const itemName = getCurrentItemName() || 'CurrentItem';
+    const selectedColor = colors.find(c => c.classList.contains('selected'));
+    const colorHex = selectedColor ? rgbToHex(selectedColor.style.background) : 'NoColor';
+    
+    console.log("\n📁 SUGGESTED FOLDER STRUCTURE:");
+    console.log(`   Maker_${makerID}/${itemName}/${colorHex}/${layerName}/`);
+    
+    console.log("\n═══════════════════════════════════════════════");
+}
+
+// Hàm lấy tên layer từ element
+function getLayerName(layerElement) {
+    if (layerElement.title) return layerElement.title;
+    if (layerElement.getAttribute('aria-label')) return layerElement.getAttribute('aria-label');
+    
+    const img = layerElement.querySelector('img');
+    if (img && img.alt) return img.alt;
+    
+    return layerElement.getAttribute('data-key') || 'Unknown';
+}
+
 // Lắng nghe lệnh từ Popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'START_CRAWL') {
         const autoNext = message.autoNextItem || false;
         startAutoCrawl(autoNext);
-        sendResponse({ status: "started" });
+        // Không cần sendResponse vì startAutoCrawl là async
     }
+    return true; // Giữ message port mở
 });
 
 // Khởi động
@@ -662,31 +779,17 @@ function init() {
         }
     }, 1000);
 
-    // 3. Lắng nghe click vào Item để TỰ ĐỘNG TẢI (Nếu được kích hoạt)
-    // Hiện tại mặc định là tự động quét màu, nhưng chưa tự động tải.
-    // Để tự động tải khi click item, ta gọi startAutoCrawl()
-
+    // 3. Lắng nghe click vào Layer để LOG THÔNG TIN
     document.addEventListener('click', (e) => {
-        // Nếu click vào element có data-key (thường là item)
-        // Loại trừ click vào màu (vì màu cũng có data-key, tránh vòng lặp vô tận)
         const target = e.target.closest('[data-key]');
         if (target) {
-            // Kiểm tra xem có phải là click vào màu không?
-            // Màu nằm trong .imagemaker_colorBox
             const isColor = target.closest('.imagemaker_colorBox');
 
             if (!isColor) {
-                console.log("🖱️ Item clicked! Auto-triggering download in 1s...");
-                // Đợi 1 chút để UI update item mới, sau đó mới chạy
+                // Đợi UI update
                 setTimeout(() => {
-                    // Kiểm tra lại xem có bảng màu không trước khi chạy
-                    const colors = scanAndLogColors(true);
-                    if (colors.length > 0) {
-                        startAutoCrawl();
-                    } else {
-                        console.log("⚠️ Item has no color palette. Skipping auto-download.");
-                    }
-                }, 1000);
+                    logLayerClickInfo(target);
+                }, 100);
             }
         }
     });
