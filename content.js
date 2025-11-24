@@ -433,18 +433,17 @@ async function startAutoCrawl(shouldAutoNext = false) {
     
     alert(`Tìm thấy ${colors.length} màu! Bắt đầu tải ${itemInfo}...`);
 
-    // CHỈ reset counter khi chuyển sang Item MỚI (không reset khi chuyển layer trong cùng item)
-    if (lastProcessedItem !== currentItemDataKey) {
-        try {
-            chrome.runtime.sendMessage({ type: 'RESET_COUNTER' });
-            console.log(`🔄 Đã reset counter về 1 cho Item mới (${currentItemDataKey})`);
-            lastProcessedItem = currentItemDataKey;
-        } catch (e) {
-            console.warn("⚠️ Không thể reset counter:", e.message);
-        }
-    } else {
-        console.log(`➡️ Tiếp tục counter cho cùng Item (${currentItemDataKey}) - Không reset`);
+    // Reset counter về 1 mỗi khi bắt đầu vòng lặp màu mới (mỗi layer)
+    // Để mỗi folder màu có: 1.jpg, 2.jpg, 3.jpg...
+    try {
+        chrome.runtime.sendMessage({ type: 'RESET_COUNTER' });
+        console.log(`🔄 Đã reset counter về 1 cho layer mới`);
+    } catch (e) {
+        console.warn("⚠️ Không thể reset counter:", e.message);
     }
+    
+    // Cập nhật item hiện tại
+    lastProcessedItem = currentItemDataKey;
 
     // 2. Vòng lặp qua từng MÀU (bỏ qua màu trùng)
     const processedColors = new Set(); // Lưu các màu đã xử lý
