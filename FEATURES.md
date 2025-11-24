@@ -60,27 +60,30 @@ Downloads/
   └── Maker_{MakerID}/
       └── {Tên Item}/
           └── {ColorHex}/
-              └── {LayerName}/
-                  ├── 1.jpg
-                  ├── 2.jpg
-                  └── ...
+              ├── 1.jpg
+              ├── 2.jpg
+              └── ...
 ```
 
 **Ví dụ:**
 ```
 Downloads/
   └── Maker_1469769/
-      └── Mũi/
-          ├── FAF2EC/
-          │   ├── Layer1/
-          │   │   ├── 1.jpg
-          │   │   └── 2.jpg
-          │   └── Layer2/
-          │       └── 1.jpg
-          └── FFE599/
-              └── Layer1/
-                  └── 1.jpg
+      └── 1386388/          ← data-key của Item (vì Picrew không cung cấp tên)
+          ├── FAF2EC/       ← Màu 1
+          │   ├── 1.jpg     ← Layer 1
+          │   ├── 2.jpg     ← Layer 2
+          │   └── 3.jpg     ← Layer 3
+          └── FFE599/       ← Màu 2
+              ├── 1.jpg     ← Layer 1
+              ├── 2.jpg     ← Layer 2
+              └── 3.jpg     ← Layer 3
 ```
+
+**Lưu ý:** 
+- Tên Item sử dụng `data-key` (ID số) vì Picrew không cung cấp tên text trong HTML
+- Mỗi folder màu chứa tất cả layer: 1.jpg (layer 1), 2.jpg (layer 2), 3.jpg (layer 3)...
+- Counter reset về 1 khi bắt đầu layer mới để đảm bảo tất cả folder màu có cùng số file
 
 ### 10. UI Popup thông minh
 - ✅ Tự động ẩn input "Tên thư mục" khi ở Picrew Mode
@@ -92,18 +95,20 @@ Downloads/
 
 ## ⚡ Tính năng Auto Crawl
 
-### 11. Tải tất cả màu của Item
+### 11. Tải tất cả màu của Layer
 - ✅ Nút "⚡ Tải Tất Cả Màu" trong popup
 - ✅ Tự động quét và phát hiện tất cả màu có sẵn
 - ✅ Tự động click qua từng màu và tải ảnh
+- ✅ Tự động bỏ qua layer không có màu (như layer X - ẩn)
 - ✅ Hiển thị số lượng màu tìm được
 - ✅ Thông báo khi hoàn thành
 
 ### 12. Tự động chuyển Layer
 - ✅ Checkbox "🔄 Tự động chuyển Item tiếp theo"
+- ✅ Tự động bỏ qua layer không có bảng màu (layer X - ẩn)
 - ✅ Sau khi tải xong tất cả màu của 1 layer → tự động click layer tiếp theo
 - ✅ Tự động tải tất cả màu của layer mới
-- ✅ Lặp lại cho đến khi hết layer trong slide hiện tại
+- ✅ Lặp lại cho đến khi hết layer trong item hiện tại
 
 ### 13. Tự động chuyển Item
 - ✅ Sau khi hết layer → tự động click item tiếp theo
@@ -165,16 +170,18 @@ AutoSaveNetworkImg/
 2. **Content Script**: Chạy trên Picrew → Phát hiện Item/Layer/Màu → Gửi message về background
 3. **Popup**: Hiển thị trạng thái → Điều khiển extension → Gửi lệnh crawl
 
-### Quy trình Auto Crawl:
-1. Quét và phát hiện tất cả màu của layer hiện tại
-2. Click qua từng màu → Tải ảnh (1.5s delay)
-3. Sau khi hết màu → Click layer tiếp theo
-4. Sau khi hết layer → Click item tiếp theo
-5. Lặp lại cho đến khi hoàn thành
+### Quy trình Auto Crawl (Cập nhật):
+1. Kiểm tra layer hiện tại có bảng màu không
+2. Nếu KHÔNG có màu (layer X - ẩn) → Tự động chuyển sang layer tiếp theo
+3. Nếu CÓ màu → Quét và tải tất cả màu (1.5s delay mỗi màu)
+4. Sau khi hết màu → Click layer tiếp theo
+5. Sau khi hết layer → Click item tiếp theo
+6. Lặp lại cho đến khi hoàn thành tất cả item
 
 ### Cấu trúc folder logic:
-- **Picrew Mode**: `Maker_{ID}/{ItemName}/{ColorHex}/{LayerName}/`
+- **Picrew Mode**: `Maker_{ID}/{ItemName}/{ColorHex}/`
 - **Chế độ thường**: `{FolderName}/`
+- **Lưu ý**: Tất cả layer của cùng một màu sẽ lưu chung trong folder màu đó
 
 ---
 
@@ -190,11 +197,14 @@ AutoSaveNetworkImg/
 
 ## 📌 Lưu ý
 
+- Extension KHÔNG tự động tải khi vừa load trang (chỉ tải khi bấm nút)
 - Extension tự động tạo folder nếu chưa tồn tại
-- Counter reset về 1 khi đổi màu hoặc layer
-- Nếu không tìm thấy tên Item/Layer, sẽ dùng index hoặc bỏ qua
+- Counter reset về 1 khi bắt đầu layer mới (để mỗi folder màu có 1.jpg, 2.jpg, 3.jpg...)
+- Counter KHÔNG reset khi đổi màu (để các folder màu có cùng số file)
+- Tên Item sử dụng `data-key` (ID số) vì Picrew không cung cấp tên text
+- Tự động bỏ qua layer không có bảng màu (layer X - ẩn)
 - Thời gian chờ giữa các màu: 1.5 giây (có thể điều chỉnh)
-- Thời gian chờ sau khi click layer: 2 giây
+- Thời gian chờ sau khi click layer/item: 1.5 giây
 
 ---
 

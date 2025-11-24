@@ -9,6 +9,7 @@ let currentColorHex = null;
 let currentItemName = null; // Tên item (ví dụ: "Mũi", "Mắt"...)
 let currentLayerName = null; // Tên layer con (nếu có)
 let isPicrewMode = false; // True khi đang ở trang Picrew
+let isCrawling = false; // True khi đang trong quá trình auto crawl
 
 // 1. LẮNG NGHE MESSAGE TỪ CONTENT SCRIPT (Picrew color detection)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -21,9 +22,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     currentLayerName = message.layerName || null;
     isPicrewMode = true;
 
-    // Reset counter khi đổi màu hoặc layer
-    fileCounter = 1;
-    chrome.storage.local.set({ fileCounter: 1 });
+    // KHÔNG reset counter khi đổi màu
+    // Counter sẽ tăng dần: 1.jpg, 2.jpg, 3.jpg...
+    // Chỉ reset khi user bấm nút Reset hoặc tắt extension
 
     console.log(`✅ Activated Picrew Mode: Maker ${currentMakerID}, Item: ${currentItemName || 'N/A'}, Layer: ${currentLayerName || 'N/A'}, Color ${currentColorHex}`);
 
@@ -35,6 +36,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       picrewLayerName: currentLayerName,
       isPicrewMode: true // Lưu trạng thái này để Popup biết
     });
+  }
+  
+  // Message để reset counter khi bắt đầu layer mới
+  if (message.type === 'RESET_COUNTER') {
+    console.log("🔄 Reset counter về 1 (bắt đầu layer mới)");
+    fileCounter = 1;
+    chrome.storage.local.set({ fileCounter: 1 });
+  }
+
+  // Message để bắt đầu/dừng crawl
+  if (message.type === 'START_CRAWLING') {
+    isCrawling = true;
+    console.log("🚀 Bắt đầu crawling mode");
+  }
+  
+  if (message.type === 'STOP_CRAWLING') {
+    isCrawling = false;
+    console.log("⏹️ Dừng crawling mode");
   }
 });
 
@@ -79,26 +98,22 @@ function updateIcon() {
 // 3. Hàm tạo folder path động
 function getFolderPath() {
   if (isPicrewMode && currentMakerID && currentColorHex) {
-    // Chế độ Picrew: Maker_{ID}/{ItemName}/{ColorHex}/{LayerName}/
+    // Chế độ Picrew: Maker_{ID}/{ItemName}/{ColorHex}/
     let path = `Maker_${currentMakerID}`;
-    
+
     // Thêm tên Item nếu có
     if (currentItemName) {
       // Làm sạch tên item (loại bỏ ký tự đặc biệt không hợp lệ cho tên folder)
       const cleanItemName = currentItemName.replace(/[<>:"/\\|?*]/g, '_').trim();
       path += `/${cleanItemName}`;
     }
-    
+
     // Thêm mã màu
     path += `/${currentColorHex}`;
-    
-    // Thêm tên Layer nếu có
-    if (currentLayerName) {
-      // Làm sạch tên layer
-      const cleanLayerName = currentLayerName.replace(/[<>:"/\\|?*]/g, '_').trim();
-      path += `/${cleanLayerName}`;
-    }
-    
+
+    // KHÔNG thêm LayerName vào folder path nữa
+    // Tất cả layer sẽ lưu chung trong folder màu
+
     return path;
   } else {
     // Chế độ thường: Dùng folderName từ popup
@@ -109,8 +124,8 @@ function getFolderPath() {
 // 4. LẮNG NGHE REQUEST MẠNG
 chrome.webRequest.onCompleted.addListener(
   function (details) {
-    // Nếu chưa bật công tắc thì bỏ qua
-    if (!isEnabled) return;
+    // Nếu chưa bật công tắc hoặc không đang crawl thì bỏ qua
+    if (!isEnabled || !isCrawling) return;
 
     // Chỉ bắt các request là hình ảnh
     if (details.type === 'image' || details.type === 'xmlhttprequest') {
@@ -118,7 +133,7 @@ chrome.webRequest.onCompleted.addListener(
       const url = details.url;
 
       // Lọc thêm: Chỉ tải file có đuôi ảnh (png, jpg, webp)
-      if (url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
+      if (url.match(/\.(png)/i)) {
 
         // Bỏ qua các icon nhỏ hoặc file svg giao diện
         if (url.includes('icon') || url.includes('logo')) return;
@@ -167,7 +182,7 @@ function getFileExtension(url) {
     filename = filename.substring(0, filename.indexOf('?'));
   }
 
-  const match = filename.match(/\.(jpeg|jpg|gif|png|webp)/i);
+  const match = filename.match(/\.(png)/i);
   if (match) {
     return match[1].toLowerCase();
   }
