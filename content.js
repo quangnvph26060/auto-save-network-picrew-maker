@@ -162,7 +162,7 @@ function observeColorChanges() {
 
 // Hàm quét và log màu (Tách riêng để gọi lúc khởi động)
 function scanAndLogColors(isAuto = false) {
-    console.log("🔍 Scanning for color palette...");
+    console.log("🔍 Đang quét bảng màu...");
 
     // 1. Lấy danh sách MÀU (Zone 3)
     // Chiến thuật: Dùng Selector chính xác từ User cung cấp
@@ -182,7 +182,7 @@ function scanAndLogColors(isAuto = false) {
         });
 
         if (colors.length > 0) {
-            console.log("✅ Found Color Palette Container via Specific Selector!");
+            console.log("✅ Đã tìm thấy bảng màu qua Selector cụ thể!");
         }
     }
 
@@ -197,7 +197,7 @@ function scanAndLogColors(isAuto = false) {
             });
             if (colorLis.length >= 2) { // Yêu cầu ít nhất 2 màu để chắc chắn
                 colors = colorLis;
-                console.log("✅ Found Color Palette via Scan:", ul);
+                console.log("✅ Đã tìm thấy bảng màu qua quét:", ul);
                 if (colors.length > 1) break;
             }
         }
@@ -205,7 +205,7 @@ function scanAndLogColors(isAuto = false) {
 
     // LOG RA CÁC MÃ MÀU (Theo yêu cầu)
     if (colors.length > 0) {
-        console.group("🌈 Detected Colors (Ready to Download):");
+        console.group("🌈 Các màu đã phát hiện (Sẵn sàng tải):");
         colors.forEach((li, index) => {
             const bg = li.style.background;
             const hex = rgbToHex(bg);
@@ -213,18 +213,18 @@ function scanAndLogColors(isAuto = false) {
         });
         console.groupEnd();
         if (isAuto) {
-            console.log("✅ Auto-detected color palette.");
+            console.log("✅ Đã tự động phát hiện bảng màu.");
         }
 
         // LOG RA CÁC LAYER (Nếu có)
         const layers = getAllLayers();
         if (layers.length > 0) {
-            console.group("📋 Detected Layers in Current Slide:");
+            console.group("📋 Các Layer trong Slide hiện tại:");
             layers.forEach((layer, index) => {
                 const dataKey = layer.getAttribute('data-key');
                 const isSelected = layer.classList.contains('selected');
                 const title = layer.title || layer.getAttribute('aria-label') || 'N/A';
-                console.log(`${index + 1}. data-key="${dataKey}" | selected=${isSelected} | title="${title}"`);
+                console.log(`${index + 1}. data-key="${dataKey}" | đã chọn=${isSelected} | tên="${title}"`);
             });
             console.groupEnd();
             
@@ -232,12 +232,12 @@ function scanAndLogColors(isAuto = false) {
             const currentLayer = layers.find(l => l.classList.contains('selected'));
             if (currentLayer) {
                 const layerName = getCurrentLayerName();
-                console.log(`✅ Current Layer: ${layerName || 'N/A'} (data-key: ${currentLayer.getAttribute('data-key')})`);
+                console.log(`✅ Layer hiện tại: ${layerName || 'N/A'} (data-key: ${currentLayer.getAttribute('data-key')})`);
             } else {
-                console.log("⚠️ No layer is currently selected");
+                console.log("⚠️ Chưa có layer nào được chọn");
             }
         } else {
-            console.log("ℹ️ No layers detected (single layer item)");
+            console.log("ℹ️ Không phát hiện layer (item chỉ có 1 layer)");
         }
 
         // QUAN TRỌNG: Tự động gửi màu đang selected về background để tạo folder
@@ -279,7 +279,7 @@ function scanAndLogColors(isAuto = false) {
             const layerName = getCurrentLayerName();
             
             if (maker) {
-                console.log(`📤 Auto-sending color to background: ${colorToSend.hex} (Maker: ${maker}, Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
+                console.log(`📤 Tự động gửi màu về background: ${colorToSend.hex} (Maker: ${maker}, Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
                 try {
                     chrome.runtime.sendMessage({
                         type: 'COLOR_SELECTED',
@@ -293,15 +293,15 @@ function scanAndLogColors(isAuto = false) {
                     currentItemName = itemName;
                     currentLayerName = layerName;
                 } catch (e) {
-                    // console.warn("⚠️ Failed to send message:", e.message);
+                    console.warn("⚠️ Gửi message thất bại:", e.message);
                 }
             }
         }
     } else {
         if (isAuto) {
-            console.log("⏳ Waiting for Item selection... (Please select an Item)");
+            console.log("⏳ Đang chờ chọn Item... (Vui lòng chọn một Item)");
         } else {
-            console.log("⚠️ No color palette found. Please select an Item first.");
+            console.log("⚠️ Không tìm thấy bảng màu. Vui lòng chọn Item trước.");
         }
     }
 
@@ -336,7 +336,7 @@ function getAllItems() {
         }
     });
     
-    console.log(`📋 Found ${allItems.length} total items`);
+    console.log(`📋 Đã tìm thấy ${allItems.length} item tổng cộng`);
     return allItems;
 }
 
@@ -351,22 +351,22 @@ function getCurrentSelectedItem() {
 function getAllLayers() {
     const selectedItem = getCurrentSelectedItem();
     if (!selectedItem) {
-        console.log("⚠️ No selected item found for layer detection");
+        console.log("⚠️ Không tìm thấy item đã chọn để phát hiện layer");
         return [];
     }
 
-    console.log("🔍 Scanning for layers in current splide slide...");
+    console.log("🔍 Đang quét layer trong slide hiện tại...");
     
     const layers = [];
     
     // QUAN TRỌNG: Tìm splide__slide hiện tại (có class is-active hoặc is-visible)
     const currentSlide = selectedItem.closest('.splide__slide');
     if (currentSlide) {
-        console.log(`Found current slide:`, currentSlide.id);
+        console.log(`Đã tìm thấy slide hiện tại:`, currentSlide.id);
         
         // Tìm tất cả các li[data-key] trong slide hiện tại
         const slideLis = currentSlide.querySelectorAll('li[data-key]');
-        console.log(`Found ${slideLis.length} li elements in current slide`);
+        console.log(`Đã tìm thấy ${slideLis.length} phần tử li trong slide hiện tại`);
         
         slideLis.forEach(li => {
             // Loại trừ remove_item (có class remove_item)
@@ -380,11 +380,11 @@ function getAllLayers() {
                 layers.push(li);
                 const dataKey = li.getAttribute('data-key');
                 const isSelected = li.classList.contains('selected');
-                console.log(`  ✅ Found layer: data-key="${dataKey}", selected=${isSelected}`);
+                console.log(`  ✅ Đã tìm thấy layer: data-key="${dataKey}", đã chọn=${isSelected}`);
             }
         });
     } else {
-        console.log("⚠️ Could not find current splide__slide");
+        console.log("⚠️ Không tìm thấy splide__slide hiện tại");
         
         // Fallback: Tìm trong simplebar-content của slide đang active
         const activeSlide = document.querySelector('.splide__slide.is-active, .splide__slide.is-visible');
@@ -397,20 +397,20 @@ function getAllLayers() {
                 
                 if (!isRemoveItem && !isColor && !layers.includes(li)) {
                     layers.push(li);
-                    console.log(`  ✅ Found layer in active slide:`, li.getAttribute('data-key'));
+                    console.log(`  ✅ Đã tìm thấy layer trong slide active:`, li.getAttribute('data-key'));
                 }
             });
         }
     }
 
-    console.log(`📊 Total layers found: ${layers.length}`);
+    console.log(`📊 Tổng số layer tìm thấy: ${layers.length}`);
     if (layers.length > 0) {
         const selectedLayer = layers.find(l => l.classList.contains('selected'));
         const selectedIndex = selectedLayer ? layers.indexOf(selectedLayer) : -1;
-        console.log(`   Current layer index: ${selectedIndex >= 0 ? selectedIndex + 1 : 'N/A'}/${layers.length}`);
-        console.log(`   Layer data-keys:`, layers.map(l => l.getAttribute('data-key')));
+        console.log(`   Chỉ số layer hiện tại: ${selectedIndex >= 0 ? selectedIndex + 1 : 'N/A'}/${layers.length}`);
+        console.log(`   Các data-key của layer:`, layers.map(l => l.getAttribute('data-key')));
     } else {
-        console.log(`   ⚠️ No layers found in current slide`);
+        console.log(`   ⚠️ Không tìm thấy layer nào trong slide hiện tại`);
     }
     return layers;
 }
@@ -419,7 +419,7 @@ function getAllLayers() {
 function getNextLayer() {
     const layers = getAllLayers();
     if (layers.length === 0) {
-        console.log("⚠️ No layers available to get next");
+        console.log("⚠️ Không có layer nào để chuyển tiếp");
         return null;
     }
 
@@ -428,21 +428,21 @@ function getNextLayer() {
 
     if (!selectedLayer) {
         // Nếu không có layer nào selected, chọn layer đầu tiên
-        console.log("ℹ️ No selected layer found, using first layer in list");
+        console.log("ℹ️ Không tìm thấy layer đã chọn, dùng layer đầu tiên");
         return layers[0];
     }
 
     const currentIndex = layers.indexOf(selectedLayer);
-    console.log(`📍 Current layer index: ${currentIndex + 1}/${layers.length} (data-key: ${selectedLayer.getAttribute('data-key')})`);
+    console.log(`📍 Chỉ số layer hiện tại: ${currentIndex + 1}/${layers.length} (data-key: ${selectedLayer.getAttribute('data-key')})`);
     
     if (currentIndex < layers.length - 1) {
         const nextLayer = layers[currentIndex + 1];
-        console.log(`➡️ Next layer found: index ${currentIndex + 2}/${layers.length} (data-key: ${nextLayer.getAttribute('data-key')})`);
+        console.log(`➡️ Đã tìm thấy layer tiếp theo: chỉ số ${currentIndex + 2}/${layers.length} (data-key: ${nextLayer.getAttribute('data-key')})`);
         return nextLayer;
     }
 
     // Đã hết layer trong slide hiện tại
-    console.log("✅ All layers in current slide processed");
+    console.log("✅ Đã xử lý hết tất cả layer trong slide hiện tại");
     return null;
 }
 
@@ -470,9 +470,9 @@ async function startAutoCrawl(shouldAutoNext = false) {
     isCrawling = true;
     autoNextItem = shouldAutoNext;
     
-    console.log("🚀 Starting Auto Color Loop...");
+    console.log("🚀 Bắt đầu vòng lặp tự động tải màu...");
     if (autoNextItem) {
-        console.log("🔄 Auto-next-item mode: ON");
+        console.log("🔄 Chế độ tự động chuyển item: BẬT");
     }
 
     // Gọi hàm quét màu để lấy danh sách
@@ -483,13 +483,13 @@ async function startAutoCrawl(shouldAutoNext = false) {
         
         // Nếu bật auto-next, tự động chuyển sang layer/item tiếp theo
         if (autoNextItem) {
-            console.log("🔄 Auto-skipping to next layer/item...");
+            console.log("🔄 Tự động bỏ qua sang layer/item tiếp theo...");
             isCrawling = false;
             
             // Thử chuyển sang layer tiếp theo
             const nextLayer = getNextLayer();
             if (nextLayer) {
-                console.log("➡️ Moving to next layer...");
+                console.log("➡️ Đang chuyển sang layer tiếp theo...");
                 nextLayer.click();
                 await new Promise(r => setTimeout(r, 1000));
                 startAutoCrawl(true);
@@ -499,7 +499,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
             // Nếu không còn layer, chuyển sang item tiếp theo
             const nextItem = getNextItem();
             if (nextItem) {
-                console.log("➡️ Moving to next item...");
+                console.log("➡️ Đang chuyển sang item tiếp theo...");
                 nextItem.click();
                 await new Promise(r => setTimeout(r, 1000));
                 startAutoCrawl(true);
