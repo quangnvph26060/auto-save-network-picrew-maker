@@ -534,7 +534,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
             const itemName = getCurrentItemName();
             const layerName = getCurrentLayerName();
             
-            console.log(`🎨 Setting target folder to Color: ${hexColor} (Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
+            console.log(`🎨 Đang đặt folder đích thành Màu: ${hexColor} (Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
             // Gửi tin nhắn cập nhật folder NGAY LẬP TỨC
             try {
                 chrome.runtime.sendMessage({
@@ -555,7 +555,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
 
         // Click Màu
         colorLi.click();
-        console.log(`👉 Clicked Color ${i + 1}/${colors.length} (${hexColor})`);
+        console.log(`👉 Đã click Màu ${i + 1}/${colors.length} (${hexColor})`);
 
         // Đợi ảnh render và download
         // Thời gian chờ: 1.5s (có thể tăng nếu mạng chậm)
@@ -563,12 +563,12 @@ async function startAutoCrawl(shouldAutoNext = false) {
     }
 
     isCrawling = false;
-    console.log("✅ Auto Color Loop Finished!");
+    console.log("✅ Đã hoàn thành vòng lặp tải màu tự động!");
     
     // Nếu bật auto-next-item, tự động chuyển sang layer hoặc item tiếp theo
     if (autoNextItem) {
         // 1. Thử chuyển sang layer tiếp theo trước (nếu có)
-        console.log("🔍 Checking for next layer in current slide...");
+        console.log("🔍 Đang kiểm tra layer tiếp theo trong slide hiện tại...");
         const layers = getAllLayers();
         const nextLayer = getNextLayer();
         
@@ -576,8 +576,8 @@ async function startAutoCrawl(shouldAutoNext = false) {
             const currentLayerIndex = layers.findIndex(l => l.classList.contains('selected'));
             const nextIndex = currentLayerIndex >= 0 ? currentLayerIndex + 2 : 1;
             const dataKey = nextLayer.getAttribute('data-key');
-            console.log(`➡️ Auto-moving to next layer: ${nextIndex}/${layers.length} (data-key: ${dataKey})`);
-            console.log(`   Next layer element:`, nextLayer);
+            console.log(`➡️ Tự động chuyển sang layer tiếp theo: ${nextIndex}/${layers.length} (data-key: ${dataKey})`);
+            console.log(`   Phần tử layer tiếp theo:`, nextLayer);
             
             // Click layer tiếp theo - thử nhiều cách
             let clickSuccess = false;
@@ -586,9 +586,9 @@ async function startAutoCrawl(shouldAutoNext = false) {
             try {
                 nextLayer.click();
                 clickSuccess = true;
-                console.log(`   ✅ Clicked layer directly`);
+                console.log(`   ✅ Đã click layer trực tiếp`);
             } catch (e) {
-                console.log(`   ⚠️ Direct click failed:`, e.message);
+                console.log(`   ⚠️ Click trực tiếp thất bại:`, e.message);
             }
             
             // Cách 2: Trigger mouse events
@@ -604,9 +604,9 @@ async function startAutoCrawl(shouldAutoNext = false) {
                     await new Promise(r => setTimeout(r, 50));
                     nextLayer.dispatchEvent(clickEvent);
                     clickSuccess = true;
-                    console.log(`   ✅ Clicked layer via events`);
+                    console.log(`   ✅ Đã click layer qua events`);
                 } catch (e) {
-                    console.log(`   ⚠️ Event click failed:`, e.message);
+                    console.log(`   ⚠️ Click qua event thất bại:`, e.message);
                 }
             }
             
@@ -617,41 +617,41 @@ async function startAutoCrawl(shouldAutoNext = false) {
                     try {
                         clickableChild.click();
                         clickSuccess = true;
-                        console.log(`   ✅ Clicked child div element`);
+                        console.log(`   ✅ Đã click phần tử div con`);
                     } catch (e) {
-                        console.log(`   ⚠️ Child div click failed:`, e.message);
+                        console.log(`   ⚠️ Click div con thất bại:`, e.message);
                     }
                 }
             }
             
             if (!clickSuccess) {
-                console.error(`   ❌ All click methods failed for layer`);
+                console.error(`   ❌ Tất cả phương thức click đều thất bại`);
             }
             
             // Đợi UI update (tăng thời gian chờ để đảm bảo UI load xong)
-            console.log(`   ⏳ Waiting for UI to update...`);
+            console.log(`   ⏳ Đang chờ UI cập nhật...`);
             await new Promise(r => setTimeout(r, 2000));
             
             // Kiểm tra xem layer đã được chọn chưa
             const isNowSelected = nextLayer.classList.contains('selected');
-            console.log(`   📍 Layer selection status: ${isNowSelected ? 'SELECTED ✅' : 'NOT SELECTED ❌'}`);
+            console.log(`   📍 Trạng thái chọn layer: ${isNowSelected ? 'ĐÃ CHỌN ✅' : 'CHƯA CHỌN ❌'}`);
             
             if (isNowSelected) {
                 // Quét lại màu sau khi chuyển layer thành công
                 const newColors = scanAndLogColors();
                 if (newColors.length > 0) {
-                    console.log(`   ✅ Found ${newColors.length} colors for new layer, continuing...`);
+                    console.log(`   ✅ Đã tìm thấy ${newColors.length} màu cho layer mới, tiếp tục...`);
                     // Tự động chạy lại cho layer tiếp theo
                     startAutoCrawl(true);
                     return;
                 } else {
-                    console.log(`   ⚠️ No colors found for new layer, trying next layer/item...`);
+                    console.log(`   ⚠️ Không tìm thấy màu cho layer mới, thử layer/item tiếp theo...`);
                 }
             } else {
-                console.log(`   ⚠️ Layer was not selected after click, may need to try next item`);
+                console.log(`   ⚠️ Layer chưa được chọn sau khi click, có thể cần thử item tiếp theo`);
             }
         } else {
-            console.log(`   ℹ️ No more layers in current slide (total found: ${layers.length})`);
+            console.log(`   ℹ️ Không còn layer nào trong slide hiện tại (tổng tìm thấy: ${layers.length})`);
         }
         
         // 2. Nếu không còn layer, chuyển sang item tiếp theo
@@ -659,7 +659,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
         if (nextItem) {
             const totalItems = getAllItems().length;
             const currentIndex = getAllItems().indexOf(getCurrentSelectedItem() || nextItem);
-            console.log(`➡️ Auto-moving to next item: ${currentIndex + 2}/${totalItems}`);
+            console.log(`➡️ Tự động chuyển sang item tiếp theo: ${currentIndex + 2}/${totalItems}`);
             
             // Click item tiếp theo
             nextItem.click();
@@ -671,7 +671,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
             startAutoCrawl(true);
         } else {
             alert("✅ Đã tải xong TẤT CẢ Item, Layer và màu!");
-            console.log("🎉 All items and layers completed!");
+            console.log("🎉 Đã hoàn thành tất cả item và layer!");
         }
     } else {
         alert("Đã tải xong tất cả màu của Item này!");
@@ -801,4 +801,4 @@ if (document.readyState === 'loading') {
     init();
 }
 
-console.log('Picrew Auto Color Loop (Robust) loaded!');
+console.log('🎨 Picrew Auto Color Loop đã được tải!');
