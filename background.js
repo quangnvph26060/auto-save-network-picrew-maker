@@ -10,6 +10,10 @@ let currentItemName = null; // Tên item (ví dụ: "Mũi", "Mắt"...)
 let currentLayerName = null; // Tên layer con (nếu có)
 let isPicrewMode = false; // True khi đang ở trang Picrew
 let isCrawling = false; // True khi đang trong quá trình auto crawl
+let hasColorPalette = true; // True nếu Item có bảng màu, False nếu không có
+
+// Track counter cho mỗi folder màu
+let folderCounters = {}; // { "Maker_123/Item/COLOR": 3 }
 
 // 1. LẮNG NGHE MESSAGE TỪ CONTENT SCRIPT (Picrew color detection)
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -20,13 +24,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     currentColorHex = message.color.hex;
     currentItemName = message.itemName || null;
     currentLayerName = message.layerName || null;
+    hasColorPalette = message.hasColorPalette !== false; // Mặc định true nếu không có thông tin
     isPicrewMode = true;
 
-    // KHÔNG reset counter khi đổi màu
-    // Counter sẽ tăng dần: 1.jpg, 2.jpg, 3.jpg...
-    // Chỉ reset khi user bấm nút Reset hoặc tắt extension
-
-    console.log(`✅ Activated Picrew Mode: Maker ${currentMakerID}, Item: ${currentItemName || 'N/A'}, Layer: ${currentLayerName || 'N/A'}, Color ${currentColorHex}`);
+    console.log(`✅ Activated Picrew Mode: Maker ${currentMakerID}, Item: ${currentItemName || 'N/A'}, Layer: ${currentLayerName || 'N/A'}, Color ${currentColorHex}, Has Color Palette: ${hasColorPalette}`);
 
     // Gửi update cho popup và lưu trạng thái Picrew Mode
     chrome.storage.local.set({
@@ -34,6 +35,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       picrewColorHex: currentColorHex,
       picrewItemName: currentItemName,
       picrewLayerName: currentLayerName,
+      hasColorPalette: hasColorPalette,
       isPicrewMode: true // Lưu trạng thái này để Popup biết
     });
   }
@@ -97,8 +99,8 @@ function updateIcon() {
 
 // 3. Hàm tạo folder path động
 function getFolderPath() {
-  if (isPicrewMode && currentMakerID && currentColorHex) {
-    // Chế độ Picrew: Maker_{ID}/{ItemName}/{ColorHex}/
+  if (isPicrewMode && currentMakerID) {
+    // Chế độ Picrew: Maker_{ID}/{ItemName}/[{ColorHex}/]
     let path = `Maker_${currentMakerID}`;
 
     // Thêm tên Item nếu có
@@ -108,17 +110,37 @@ function getFolderPath() {
       path += `/${cleanItemName}`;
     }
 
-    // Thêm mã màu
-    path += `/${currentColorHex}`;
-
-    // KHÔNG thêm LayerName vào folder path nữa
-    // Tất cả layer sẽ lưu chung trong folder màu
+    // Chỉ thêm folder màu nếu Item CÓ bảng màu
+    if (hasColorPalette && currentColorHex) {
+      path += `/${currentColorHex}`;
+    }
+    // Nếu KHÔNG có bảng màu → lưu trực tiếp vào folder Item
 
     return path;
   } else {
     // Chế độ thường: Dùng folderName từ popup
     return folderName;
   }
+}
+
+// Hàm lấy counter cho folder hiện tại
+function getCounterForFolder(folderPath) {
+  if (!folderCounters[folderPath]) {
+    folderCounters[folderPath] = 1;
+  }
+  return folderCounters[folderPath];
+}
+
+// Hàm tăng counter cho folder
+function incrementCounterForFolder(folderPath) {
+  if (!folderCounters[folderPath]) {
+    folderCounters[folderPath] = 1;
+  }
+  folderCounters[folderPath]++;
+  
+  // Cập nhật UI counter (hiển thị counter của folder hiện tại)
+  fileCounter = folderCounters[folderPath];
+  chrome.storage.local.set({ fileCounter: fileCounter });
 }
 
 // 4. LẮNG NGHE REQUEST MẠNG
@@ -140,16 +162,20 @@ chrome.webRequest.onCompleted.addListener(
 
         console.log("Phát hiện ảnh mới:", url);
 
-        // Lấy extension từ URL
-        const extension = getFileExtension(url);
-        const newFilename = `${fileCounter}.${extension}`;
-
         // Lấy folder path (tự động hoặc thủ công)
         const targetFolder = getFolderPath();
+        
+        // Lấy counter riêng cho folder này
+        const currentCounter = getCounterForFolder(targetFolder);
+        
+        // Lấy extension từ URL
+        const extension = getFileExtension(url);
+        const newFilename = `${currentCounter}.${extension}`;
         const fullPath = targetFolder + "/" + newFilename;
 
         // Log để debug
         console.log(`📁 Folder path: ${targetFolder}`);
+        console.log(`🔢 Counter cho folder này: ${currentCounter}`);
         console.log(`💾 Full path: ${fullPath}`);
 
         // Thực hiện tải về (Chrome sẽ tự động tạo folder nếu chưa tồn tại)
@@ -163,9 +189,8 @@ chrome.webRequest.onCompleted.addListener(
             // console.error("❌ Download error:", chrome.runtime.lastError.message);
           } else if (downloadId) {
             console.log(`✅ Download started: ${fullPath} (ID: ${downloadId})`);
-            // Tăng counter sau khi tải thành công
-            fileCounter++;
-            chrome.storage.local.set({ fileCounter: fileCounter });
+            // Tăng counter cho folder này
+            incrementCounterForFolder(targetFolder);
           }
         });
       }

@@ -286,25 +286,11 @@ function getAllLayers() {
             
             if (!isRemoveItem && !isColor && !layers.includes(li)) {
                 layers.push(li);
-                const dataKey = li.getAttribute('data-key');
-                const isSelected = li.classList.contains('selected');
-                const isActive = slide.classList.contains('is-active');
-                if (isSelected || isActive) {
-                    console.log(`    ✅ Layer: data-key="${dataKey}", selected=${isSelected}, active=${isActive}`);
-                }
             }
         });
     });
 
     console.log(`📊 Tổng số layer tìm thấy: ${layers.length}`);
-    if (layers.length > 0) {
-        const selectedLayer = layers.find(l => l.classList.contains('selected'));
-        const selectedIndex = selectedLayer ? layers.indexOf(selectedLayer) : -1;
-        console.log(`   Chỉ số layer hiện tại: ${selectedIndex >= 0 ? selectedIndex + 1 : 'N/A'}/${layers.length}`);
-        console.log(`   Các data-key của layer:`, layers.map(l => l.getAttribute('data-key')));
-    } else {
-        console.log(`   ⚠️ Không tìm thấy layer nào trong slide hiện tại`);
-    }
     return layers;
 }
 
@@ -384,44 +370,107 @@ async function startAutoCrawl(shouldAutoNext = false) {
     const colors = scanAndLogColors();
 
     if (colors.length === 0) {
-        console.log("⚠️ Layer này không có bảng màu (có thể là layer X - ẩn)");
+        console.log("⚠️ Item này không có bảng màu → Tải tất cả layer vào folder Item");
         
-        // Nếu bật auto-next, tự động chuyển sang layer/item tiếp theo
+        // Gửi thông tin item không có màu về background
+        const currentMaker = getMakerID();
+        const itemName = getCurrentItemName();
+        try {
+            chrome.runtime.sendMessage({
+                type: 'COLOR_SELECTED',
+                makerID: currentMaker,
+                color: {
+                    hex: 'NO_COLOR',
+                    rgb: '',
+                    dataKey: ''
+                },
+                itemName: itemName,
+                layerName: null,
+                hasColorPalette: false // Item này KHÔNG có bảng màu
+            });
+        } catch (e) {}
+        
+        // Nếu bật auto-next, tải TẤT CẢ layer của item này (giới hạn 10 layer)
         if (autoNextItem) {
-            console.log("🔄 Tự động bỏ qua layer không có màu, chuyển sang layer tiếp theo...");
+            console.log("🔄 Item không có màu → Tải layer vào folder Item...");
+            
+            // Lấy tất cả layer
+            const allLayers = getAllLayers();
+            console.log(`📋 Tìm thấy ${allLayers.length} layer tổng cộng`);
+            
+            // Chỉ lấy 10 layer đầu tiên để tránh lỗi
+            const layers = allLayers.slice(0, 10);
+            console.log(`📌 Sẽ tải ${layers.length} layer đầu tiên`);
+            
+            if (layers.length > 0) {
+                // Bật crawling mode để tải ảnh
+                isCrawling = true;
+                try {
+                    chrome.runtime.sendMessage({ type: 'START_CRAWLING' });
+                } catch (e) {}
+                
+                // Tải từng layer một
+                for (let i = 0; i < layers.length; i++) {
+                    const layer = layers[i];
+                    const layerDataKey = layer.getAttribute('data-key');
+                    const layerName = getLayerName(layer);
+                    
+                    console.log(`📥 Đang tải layer ${i + 1}/${layers.length}: ${layerName} (${layerDataKey})`);
+                    
+                    // Click layer
+                    layer.click();
+                    
+                    // Đợi ảnh render và tải
+                    await new Promise(r => setTimeout(r, 1500));
+                }
+                
+                console.log("✅ Đã tải xong tất cả layer của Item này");
+            }
+            
+            // Tắt crawling mode tạm thời
             isCrawling = false;
+            try {
+                chrome.runtime.sendMessage({ type: 'STOP_CRAWLING' });
+            } catch (e) {}
             
-            // Thử chuyển sang layer tiếp theo
-            const nextLayer = getNextLayer();
-            if (nextLayer) {
-                console.log("➡️ Đang chuyển sang layer tiếp theo (bỏ qua layer không có màu)...");
-                nextLayer.click();
-                await new Promise(r => setTimeout(r, 1500));
-                startAutoCrawl(true);
-                return;
-            }
+            console.log("🔍 Đang tìm item tiếp theo...");
             
-            // Nếu không còn layer, chuyển sang item tiếp theo
+            // Sau khi tải xong tất cả layer, chuyển sang item tiếp theo
+            const allItems = getAllItems();
+            const currentItem = getCurrentSelectedItem();
+            console.log(`📊 Tổng số item: ${allItems.length}`);
+            console.log(`📍 Item hiện tại:`, currentItem?.getAttribute('data-key'));
+            
             const nextItem = getNextItem();
+            console.log(`➡️ Item tiếp theo:`, nextItem?.getAttribute('data-key'));
+            
             if (nextItem) {
-                console.log("➡️ Hết layer, đang chuyển sang item tiếp theo...");
+                console.log("✅ Đã tìm thấy item tiếp theo, đang chuyển...");
                 nextItem.click();
-                await new Promise(r => setTimeout(r, 1500));
+                console.log("👆 Đã click item tiếp theo");
+                
+                await new Promise(r => setTimeout(r, 2000)); // Tăng thời gian chờ
+                console.log("⏰ Đã chờ 2s, bắt đầu crawl item mới...");
+                
+                // Gọi lại startAutoCrawl cho item mới
                 startAutoCrawl(true);
                 return;
+            } else {
+                console.log("⚠️ Không tìm thấy item tiếp theo");
             }
             
-            // Nếu hết cả layer và item
+            // Nếu hết item
             try {
                 chrome.runtime.sendMessage({ type: 'STOP_CRAWLING' });
             } catch (e) {}
             alert("✅ Đã hoàn thành tất cả Item và Layer!");
+            console.log("🎉 Đã hoàn thành tất cả!");
             return;
         } else {
             try {
                 chrome.runtime.sendMessage({ type: 'STOP_CRAWLING' });
             } catch (e) {}
-            alert("❌ Layer này không có bảng màu! Hãy chọn layer khác hoặc bật 'Tự động chuyển Item'.");
+            alert("❌ Item này không có bảng màu! Hãy chọn item khác hoặc bật 'Tự động chuyển Item'.");
             isCrawling = false;
             return;
         }
@@ -430,8 +479,8 @@ async function startAutoCrawl(shouldAutoNext = false) {
     const currentItem = getCurrentSelectedItem();
     const itemInfo = currentItem ? `Item ${getAllItems().indexOf(currentItem) + 1}/${getAllItems().length}` : 'Item';
     const currentItemDataKey = currentItem?.getAttribute('data-key');
-    
-    alert(`Tìm thấy ${colors.length} màu! Bắt đầu tải ${itemInfo}...`);
+    // 123  
+    // alert(`Tìm thấy ${colors.length} màu! Bắt đầu tải ${itemInfo}...`);
 
     // Reset counter về 1 mỗi khi bắt đầu vòng lặp màu mới (mỗi layer)
     // Để mỗi folder màu có: 1.jpg, 2.jpg, 3.jpg...
@@ -482,7 +531,8 @@ async function startAutoCrawl(shouldAutoNext = false) {
                         dataKey: dataKey
                     },
                     itemName: itemName,
-                    layerName: layerName
+                    layerName: layerName,
+                    hasColorPalette: true // Item này có bảng màu
                 });
             } catch (e) {
                 // console.warn("⚠️ Failed to send message:", e.message);
