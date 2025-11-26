@@ -186,18 +186,11 @@ function restoreFolderInput() {
 // Auto Crawl Button
 const autoCrawlBtn = document.getElementById('auto-crawl-btn');
 const crawlStatus = document.getElementById('crawl-status');
-const autoNextItemCheckbox = document.getElementById('auto-next-item');
 
 if (autoCrawlBtn) {
     autoCrawlBtn.addEventListener('click', () => {
-        const autoNext = autoNextItemCheckbox ? autoNextItemCheckbox.checked : false;
-        
         if (crawlStatus) {
-            if (autoNext) {
-                crawlStatus.textContent = "Đang tải TẤT CẢ Item... (Đừng đóng tab Picrew)";
-            } else {
-                crawlStatus.textContent = "Đang chạy... (Đừng đóng tab Picrew)";
-            }
+            crawlStatus.textContent = "Đang tải toàn bộ Item... (Đừng đóng tab Picrew)";
             crawlStatus.style.color = "#e65100";
         }
 
@@ -205,8 +198,7 @@ if (autoCrawlBtn) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, { 
-                    type: 'START_CRAWL',
-                    autoNextItem: autoNext
+                    type: 'START_CRAWL'
                 }, (response) => {
                     if (chrome.runtime.lastError) {
                         if (crawlStatus) {
@@ -214,7 +206,7 @@ if (autoCrawlBtn) {
                             crawlStatus.style.color = "red";
                         }
                     } else {
-                        console.log("Crawl started", autoNext ? "(with auto-next)" : "");
+                        console.log("Crawl started");
                     }
                 });
             }

@@ -69,7 +69,7 @@ Downloads/
 ```
 Downloads/
   └── Maker_1469769/
-      └── 1386388/          ← data-key của Item (vì Picrew không cung cấp tên)
+    └── 1386388/          ← data-key của Item (vì Picrew không cung cấp tên)
           ├── FAF2EC/       ← Màu 1
           │   ├── 1.jpg     ← Layer 1
           │   ├── 2.jpg     ← Layer 2
