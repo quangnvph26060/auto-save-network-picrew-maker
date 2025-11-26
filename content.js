@@ -248,49 +248,62 @@ function getCurrentSelectedItem() {
 }
 
 // Hàm tìm các layer con của item hiện tại
-// Lấy TẤT CẢ layer (kể cả không hiển thị) để có thể chuyển qua hết
+// Tìm ul có chứa li.selected, rồi đếm layer trong ul đó
 function getAllLayers() {
     console.log("🔍 Đang quét layer của item hiện tại...");
 
     const layers = [];
 
-    // Tìm splide__list đang chứa slide active (đây là container của item hiện tại)
-    const activeSlide = document.querySelector('.splide__slide.is-active, .splide__slide.is-visible');
-    if (!activeSlide) {
-        console.log("⚠️ Không tìm thấy slide active");
-        return [];
-    }
-
-    // Tìm splide__list cha của slide active
-    const splideList = activeSlide.closest('.splide__list');
-    if (!splideList) {
-        console.log("⚠️ Không tìm thấy splide__list");
-        return [];
-    }
-
-    // Lấy TẤT CẢ slide (kể cả không hiển thị) để có thể chuyển qua hết
-    const allSlides = splideList.querySelectorAll('.splide__slide');
-    console.log(`Đã tìm thấy ${allSlides.length} slide tổng cộng`);
-
-    // Duyệt qua tất cả slide
-    allSlides.forEach((slide, slideIndex) => {
-        const slideLis = slide.querySelectorAll('li[data-key]');
-
-        slideLis.forEach(li => {
-            // Loại trừ remove_item
-            const isRemoveItem = li.classList.contains('remove_item');
-
-            // Loại trừ màu (có background rgb hoặc nằm trong colorBox)
-            const isColor = li.closest('.imagemaker_colorBox') ||
-                (li.style.background && li.style.background.includes('rgb'));
-
-            if (!isRemoveItem && !isColor && !layers.includes(li)) {
-                layers.push(li);
+    // Tìm tất cả .simplebar-content
+    const simplebarContents = document.querySelectorAll('.simplebar-content');
+    
+    let targetUl = null;
+    
+    // Tìm ul có chứa li.selected (layer đang được chọn)
+    for (const content of simplebarContents) {
+        const ul = content.querySelector('ul');
+        if (ul) {
+            const selectedLi = ul.querySelector('li.selected[data-key]');
+            if (selectedLi) {
+                // Kiểm tra xem li này có phải là layer không (không phải màu, không phải item)
+                const isColor = selectedLi.closest('.imagemaker_colorBox') || 
+                              (selectedLi.style.background && selectedLi.style.background.includes('rgb'));
+                const isItem = getAllItems().includes(selectedLi);
+                
+                if (!isColor && !isItem) {
+                    targetUl = ul;
+                    console.log(`✅ Đã tìm thấy ul chứa layer đang selected`);
+                    break;
+                }
             }
-        });
+        }
+    }
+
+    if (!targetUl) {
+        console.log("⚠️ Không tìm thấy ul chứa layer đang selected");
+        return [];
+    }
+
+    // Đếm tất cả layer trong ul này
+    const allLis = targetUl.querySelectorAll('li[data-key]');
+    
+    allLis.forEach(li => {
+        // Loại trừ remove_item
+        const isRemoveItem = li.classList.contains('remove_item');
+
+        // Loại trừ màu (có background rgb hoặc nằm trong colorBox)
+        const isColor = li.closest('.imagemaker_colorBox') ||
+            (li.style.background && li.style.background.includes('rgb'));
+        
+        // Loại trừ item (hàng 2)
+        const isItem = getAllItems().includes(li);
+
+        if (!isRemoveItem && !isColor && !isItem && !layers.includes(li)) {
+            layers.push(li);
+        }
     });
 
-    console.log(`📊 Tổng số layer tìm thấy: ${layers.length}`);
+    console.log(`📊 Tổng số layer trong ul: ${layers.length}`);
     return layers;
 }
 
@@ -367,18 +380,90 @@ async function startAutoCrawl(shouldAutoNext = false) {
     const allLayersCheck = getAllLayers();
     const totalLayers = allLayersCheck.length;
     console.log(`🔢 Tổng số layer phát hiện: ${totalLayers}`);
+    console.log(`📋 Chi tiết các layer:`, allLayersCheck.map(l => l.getAttribute('data-key')));
 
     // Gọi hàm quét màu để lấy danh sách
     const colors = scanAndLogColors();
 
-    // TRƯỜNG HỢP 3: Chỉ có 1 layer duy nhất → Lưu trực tiếp vào folder Item (không tạo folder màu)
-    if (totalLayers === 1) {
-        console.log("⚡ Item chỉ có 1 layer → Lưu trực tiếp vào folder Item");
+    // TRƯỜNG HỢP 3: Chỉ có 1 layer + Có màu → Lặp qua tất cả màu, lưu vào folder Item (không tạo folder màu)
+    if (totalLayers === 1 && colors.length > 0) {
+        console.log("⚡ Item chỉ có 1 layer + Có màu → Lặp qua tất cả màu, lưu vào folder Item");
         
         const currentMaker = getMakerID();
         const itemName = getCurrentItemName();
         
-        // Gửi thông tin: Không có màu, chỉ 1 layer
+        // Gửi thông tin: KHÓA chế độ tạo folder màu
+        try {
+            chrome.runtime.sendMessage({
+                type: 'COLOR_SELECTED',
+                makerID: currentMaker,
+                color: {
+                    hex: 'NO_COLOR', // Đặt NO_COLOR để không tạo folder màu
+                    rgb: '',
+                    dataKey: ''
+                },
+                itemName: itemName,
+                layerName: null,
+                hasColorPalette: false // KHÓA: Không tạo folder màu
+            });
+        } catch (e) { }
+        
+        // Bật crawling
+        isCrawling = true;
+        try {
+            chrome.runtime.sendMessage({ type: 'START_CRAWLING' });
+        } catch (e) { }
+        
+        // Reset counter về 1
+        try {
+            chrome.runtime.sendMessage({ type: 'RESET_COUNTER' });
+        } catch (e) { }
+        
+        // Lặp qua tất cả màu (KHÔNG gửi message màu để tránh tạo folder màu)
+        const processedColors = new Set();
+        
+        for (let i = 0; i < colors.length; i++) {
+            const colorLi = colors[i];
+            const bgStyle = colorLi.style.background;
+            const hexColor = rgbToHex(bgStyle);
+            
+            // Bỏ qua màu trùng
+            if (processedColors.has(hexColor)) {
+                console.log(`⏭️ Bỏ qua màu trùng ${i + 1}/${colors.length} (${hexColor})`);
+                continue;
+            }
+            
+            processedColors.add(hexColor);
+            
+            console.log(`🎨 Đang tải màu ${i + 1}/${colors.length}: ${hexColor} (KHÔNG tạo folder màu)`);
+            
+            // Click màu (KHÔNG gửi message về background)
+            // Background vẫn giữ hasColorPalette = false nên sẽ không tạo folder màu
+            colorLi.click();
+            
+            // Đợi ảnh render và tải
+            await new Promise(r => setTimeout(r, 1500));
+        }
+        
+        // Tắt crawling
+        isCrawling = false;
+        try {
+            chrome.runtime.sendMessage({ type: 'STOP_CRAWLING' });
+        } catch (e) { }
+        
+        const itemNameDisplay = getCurrentItemName() || 'Item này';
+        alert(`✅ Đã tải xong Item: ${itemNameDisplay} (${processedColors.size} màu)!`);
+        console.log(`🎉 Đã hoàn thành Item: ${itemNameDisplay}!`);
+        return;
+    }
+    
+    // TRƯỜNG HỢP 3b: Chỉ có 1 layer + KHÔNG có màu → Tải 1 ảnh duy nhất
+    if (totalLayers === 1 && colors.length === 0) {
+        console.log("⚡ Item chỉ có 1 layer + Không có màu → Tải 1 ảnh");
+        
+        const currentMaker = getMakerID();
+        const itemName = getCurrentItemName();
+        
         try {
             chrome.runtime.sendMessage({
                 type: 'COLOR_SELECTED',
@@ -401,7 +486,7 @@ async function startAutoCrawl(shouldAutoNext = false) {
         } catch (e) { }
         
         console.log(`📥 Đang tải layer duy nhất...`);
-        await new Promise(r => setTimeout(r, 2000)); // Đợi lâu hơn để chắc chắn tải xong
+        await new Promise(r => setTimeout(r, 2000));
         
         // Tắt crawling
         isCrawling = false;
@@ -539,23 +624,31 @@ async function startAutoCrawl(shouldAutoNext = false) {
             const itemName = getCurrentItemName();
             const layerName = getCurrentLayerName();
 
-            console.log(`🎨 Đang đặt folder đích thành Màu: ${hexColor} (Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
-            // Gửi tin nhắn cập nhật folder NGAY LẬP TỨC
-            try {
-                chrome.runtime.sendMessage({
-                    type: 'COLOR_SELECTED',
-                    makerID: currentMaker,
-                    color: {
-                        hex: hexColor,
-                        rgb: bgStyle,
-                        dataKey: dataKey
-                    },
-                    itemName: itemName,
-                    layerName: layerName,
-                    hasColorPalette: true // Item này có bảng màu
-                });
-            } catch (e) {
-                // console.warn("⚠️ Failed to send message:", e.message);
+            // KIỂM TRA: Nếu chỉ có 1 layer → KHÔNG tạo folder màu
+            const shouldCreateColorFolder = totalLayers > 1;
+
+            if (shouldCreateColorFolder) {
+                console.log(`🎨 Đang đặt folder đích thành Màu: ${hexColor} (Item: ${itemName || 'N/A'}, Layer: ${layerName || 'N/A'})`);
+                // Gửi tin nhắn cập nhật folder với màu
+                try {
+                    chrome.runtime.sendMessage({
+                        type: 'COLOR_SELECTED',
+                        makerID: currentMaker,
+                        color: {
+                            hex: hexColor,
+                            rgb: bgStyle,
+                            dataKey: dataKey
+                        },
+                        itemName: itemName,
+                        layerName: layerName,
+                        hasColorPalette: true // Tạo folder màu
+                    });
+                } catch (e) {
+                    // console.warn("⚠️ Failed to send message:", e.message);
+                }
+            } else {
+                console.log(`🎨 Đang tải màu ${hexColor} (KHÔNG tạo folder màu vì chỉ có 1 layer)`);
+                // KHÔNG gửi message để tránh tạo folder màu
             }
         }
 
