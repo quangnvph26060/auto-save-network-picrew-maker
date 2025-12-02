@@ -142,6 +142,13 @@ Downloads/
 - ✅ Log trạng thái click và selection
 - ✅ Log đường dẫn folder và file path
 
+### 17. Real-time Layer Detection & Item Counting (Mới)
+- ✅ Tự động phát hiện Layer đang active khi user scroll
+- ✅ Đếm số lượng item trong layer active
+- ✅ Hiển thị tên Layer và số Item ngay trên Popup
+- ✅ Cập nhật realtime không cần reload extension
+- ✅ Hỗ trợ cả iframe và các cấu trúc DOM phức tạp
+
 ---
 
 ## 📁 Cấu trúc file

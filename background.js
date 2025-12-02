@@ -11,6 +11,7 @@ let currentLayerName = null; // Tên layer con (nếu có)
 let isPicrewMode = false; // True khi đang ở trang Picrew
 let isCrawling = false; // True khi đang trong quá trình auto crawl
 let hasColorPalette = true; // True nếu Item có bảng màu, False nếu không có
+let currentLayerItemCount = 0; // Số lượng items trong layer hiện tại
 
 // Track counter cho mỗi folder màu
 let folderCounters = {}; // { "Maker_123/Item/COLOR": 3 }
@@ -39,7 +40,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       isPicrewMode: true // Lưu trạng thái này để Popup biết
     });
   }
-  
+
   // Message để reset counter khi bắt đầu layer mới
   if (message.type === 'RESET_COUNTER') {
     console.log("🔄 Reset counter về 1 (bắt đầu layer mới)");
@@ -52,10 +53,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     isCrawling = true;
     console.log("🚀 Bắt đầu crawling mode");
   }
-  
+
   if (message.type === 'STOP_CRAWLING') {
     isCrawling = false;
     console.log("⏹️ Dừng crawling mode");
+  }
+
+  // Message để nhận thông tin layer từ content script
+  if (message.type === 'LAYER_CHANGED') {
+    currentLayerName = message.layerName;
+    currentLayerItemCount = message.itemCount;
+
+    console.log(`📊 Layer: ${currentLayerName}, Items: ${currentLayerItemCount}, Colors: ${message.colorCount}`);
+
+    // Lưu vào storage để popup có thể đọc
+    chrome.storage.local.set({
+      currentLayerName: currentLayerName,
+      currentLayerItemCount: currentLayerItemCount,
+      currentLayerColorCount: message.colorCount || 0
+    });
   }
 });
 
@@ -137,7 +153,7 @@ function incrementCounterForFolder(folderPath) {
     folderCounters[folderPath] = 1;
   }
   folderCounters[folderPath]++;
-  
+
   // Cập nhật UI counter (hiển thị counter của folder hiện tại)
   fileCounter = folderCounters[folderPath];
   chrome.storage.local.set({ fileCounter: fileCounter });
@@ -164,10 +180,10 @@ chrome.webRequest.onCompleted.addListener(
 
         // Lấy folder path (tự động hoặc thủ công)
         const targetFolder = getFolderPath();
-        
+
         // Lấy counter riêng cho folder này
         const currentCounter = getCounterForFolder(targetFolder);
-        
+
         // Lấy extension từ URL
         const extension = getFileExtension(url);
         const newFilename = `${currentCounter}.${extension}`;

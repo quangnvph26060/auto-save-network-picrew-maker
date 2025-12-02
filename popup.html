@@ -105,7 +105,7 @@
 </head>
 
 <body>
-  <h3>Auto Downloader </h3>
+  <h3>Auto Downloader</h3>
 
   <div class="section">
     <p id="status-text">Trạng thái: TẮT</p>
@@ -123,7 +123,7 @@
 
   <div class="section" id="picrew-info" style="background: #e3f2fd; padding: 8px; border-radius: 5px;">
     <p style="margin: 4px 0; font-size: 12px; color: #1976d2;">
-      🎨 <strong>Picrew Mode</strong>
+      🎨 <strong>triển khai tiếp cho tôi và khi tôi chuyển item thì nó phải check xem item đó có danh sách màu không nhá</strong>
     </p>
     <div id="picrew-data" style="display: block;">
       <p style="margin: 4px 0; font-size: 11px; color: #555;">
@@ -135,8 +135,23 @@
         <strong id="picrew-color">-</strong>
       </p>
 
+      <!-- Layer Info Section -->
+      <div id="layer-info"
+        style="margin-top: 8px; padding: 6px; background: #fff3cd; border-radius: 4px; border: 1px solid #ffc107; display: none;">
+        <p style="margin: 2px 0; font-size: 11px; color: #856404;">
+          🎯 <strong>Layer:</strong> <span id="layer-name">-</span>
+        </p>
+        <p style="margin: 2px 0; font-size: 11px; color: #856404;">
+          🔢 <strong>Items:</strong> <span id="item-count">0</span>
+        </p>
+        <p style="margin: 2px 0; font-size: 11px; color: #856404;">
+          🎨 <strong>Colors:</strong> <span id="color-count">0</span>
+        </p>
+      </div>
+
       <div id="picrew-controls" style="margin-top: 8px; border-top: 1px solid #bbdefb; padding-top: 8px;">
-        <button id="auto-crawl-btn" style="background: #1976d2; font-size: 12px; margin-bottom: 4px;">⚡ Tải Toàn Bộ Item</button>
+        <button id="auto-crawl-btn" style="background: #1976d2; font-size: 12px; margin-bottom: 4px;">⚡ Tải Toàn Bộ
+          Item</button>
         <p id="crawl-status" style="font-size: 10px; color: #555; margin: 0;">(Chọn 1 Item rồi bấm nút này)</p>
         <p style="font-size: 10px; color: #777; margin: 4px 0;">✨ Tự động tải tất cả Layer và Màu</p>
       </div>

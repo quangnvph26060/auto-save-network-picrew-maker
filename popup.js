@@ -28,6 +28,11 @@ chrome.storage.local.get(['isEnabled', 'fileCounter', 'folderName', 'picrewMaker
         // Nếu không ở Picrew Mode, hiển thị lại input folder
         restoreFolderInput();
     }
+
+    // Update layer info if available
+    if (result.currentLayerName) {
+        updateLayerInfo(result.currentLayerName, result.currentLayerItemCount || 0);
+    }
 });
 
 // Lắng nghe thay đổi counter và Picrew info từ background
@@ -50,6 +55,15 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
                 restoreFolderInput();
             }
         });
+    }
+
+    // Check for layer info updates
+    if (changes.currentLayerName || changes.currentLayerItemCount) {
+        const layerName = changes.currentLayerName?.newValue;
+        const itemCount = changes.currentLayerItemCount?.newValue || 0;
+        if (layerName) {
+            updateLayerInfo(layerName, itemCount);
+        }
     }
 });
 
@@ -149,10 +163,10 @@ function updatePicrewInfo(makerID, colorHex) {
     if (folderSection) {
         const folderLabel = folderSection.querySelector('label[for="folder-input"]');
         const folderRow = folderSection.querySelector('.folder-row');
-        
+
         if (folderLabel) folderLabel.style.display = 'none';
         if (folderRow) folderRow.style.display = 'none';
-        
+
         // Thay đổi text "Đang lưu vào" thành "Tự động lưu vào" khi ở Picrew Mode
         const folderStatus = folderSection.querySelector('.folder-status');
         if (folderStatus) {
@@ -162,16 +176,31 @@ function updatePicrewInfo(makerID, colorHex) {
     }
 }
 
+// Update layer info display
+function updateLayerInfo(layerName, itemCount) {
+    const layerNameEl = document.getElementById('layer-name');
+    const itemCountEl = document.getElementById('item-count');
+    const layerInfoDiv = document.getElementById('layer-info');
+
+    if (layerNameEl) layerNameEl.textContent = layerName || '-';
+    if (itemCountEl) itemCountEl.textContent = itemCount || 0;
+
+    // Show layer info if we have data
+    if (layerInfoDiv && layerName) {
+        layerInfoDiv.style.display = 'block';
+    }
+}
+
 // Hàm khôi phục phần "Tên thư mục" khi không ở Picrew Mode
 function restoreFolderInput() {
     const folderSection = document.querySelectorAll('.section')[1]; // Section thứ 2 chứa folder input
     if (folderSection) {
         const folderLabel = folderSection.querySelector('label[for="folder-input"]');
         const folderRow = folderSection.querySelector('.folder-row');
-        
+
         if (folderLabel) folderLabel.style.display = 'block';
         if (folderRow) folderRow.style.display = 'flex';
-        
+
         // Khôi phục text "Đang lưu vào" bình thường
         const folderStatus = folderSection.querySelector('.folder-status');
         if (folderStatus) {
@@ -197,7 +226,7 @@ if (autoCrawlBtn) {
         // Gửi lệnh tới content script của tab hiện tại
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, { 
+                chrome.tabs.sendMessage(tabs[0].id, {
                     type: 'START_CRAWL'
                 }, (response) => {
                     if (chrome.runtime.lastError) {
