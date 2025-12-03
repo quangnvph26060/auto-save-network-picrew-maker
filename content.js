@@ -214,15 +214,31 @@ async function startAutoCrawl() {
         return;
     }
 
+    // Đếm số items hợp lệ (không phải remove_item và không phải pi-id)
+    const validItems = items.filter(item => {
+        const isRemove = item.classList.contains('remove_item');
+        const isPiId = item.classList.contains('pi-id');
+        return !isRemove && !isPiId;
+    });
+
+    console.log(`✅ Số items hợp lệ: ${validItems.length}/${items.length}`);
+
+    // Kiểm tra: nếu chỉ có 1 item hợp lệ và không có class pi-id
+    const shouldSkipColorFolders = validItems.length === 1 && !validItems[0].classList.contains('pi-id');
+
+    if (shouldSkipColorFolders) {
+        console.log('🎯 Chỉ có 1 item không phải pi-id → Tải trực tiếp vào folder item, không chia folder màu');
+    }
+
     // Lặp qua từng item
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const dataKey = item.getAttribute('data-key');
         const isRemove = item.classList.contains('remove_item');
 
-        // Bỏ qua remove_item
-        if (isRemove) {
-            console.log(`⏭️ Bỏ qua item ${i + 1}/${items.length} (remove_item)`);
+        // Bỏ qua remove_item hoặc pi-id
+        if (isRemove || item.classList.contains('pi-id')) {
+            console.log(`⏭️ Bỏ qua item ${i + 1}/${items.length} (Skipped: remove_item or pi-id)`);
             continue;
         }
 
@@ -238,7 +254,12 @@ async function startAutoCrawl() {
         const colors = scanColors();
         if (colors.length > 0) {
             console.log(`🎨 Tìm thấy ${colors.length} màu cho item này`);
-            await crawlColors(colors, dataKey);
+            if (shouldSkipColorFolders) {
+                console.log(`📷 Tải tất cả màu trực tiếp vào folder layer (không chia folder màu)`);
+                await crawlColorsWithoutFolders(colors, currentLayerName);
+            } else {
+                await crawlColors(colors, currentLayerName);
+            }
         } else {
             console.log(`📷 Item không có màu, chỉ tải 1 ảnh`);
         }
@@ -298,6 +319,48 @@ async function crawlColors(colors, itemName) {
     }
 }
 
+// Crawl qua tất cả màu NHƯNG không tạo folder màu (tải trực tiếp vào folder item)
+async function crawlColorsWithoutFolders(colors, itemName) {
+    const processedColors = new Set();
+    const maker = getMakerID();
+
+    // Gửi message báo cho background: KHÔNG tạo folder màu
+    try {
+        chrome.runtime.sendMessage({
+            type: 'COLOR_SELECTED',
+            makerID: maker,
+            color: { hex: null }, // Không gửi màu
+            itemName: itemName || currentLayerName,
+            layerName: currentLayerName,
+            hasColorPalette: false // Quan trọng: báo không có bảng màu
+        });
+    } catch (e) {
+        console.warn("⚠️ Failed to send no-color-folder info:", e.message);
+    }
+
+    for (let i = 0; i < colors.length; i++) {
+        const colorLi = colors[i];
+        const bgStyle = colorLi.style.background;
+        const hexColor = rgbToHex(bgStyle);
+
+        if (processedColors.has(hexColor)) {
+            console.log(`⏭️ Bỏ qua màu trùng: ${hexColor}`);
+            continue;
+        }
+
+        processedColors.add(hexColor);
+        console.log(`🎨 Đang tải màu ${i + 1}/${colors.length}: ${hexColor} (không chia folder)`);
+
+        // Click màu
+        colorLi.click();
+
+        // Đợi ảnh render
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Không cần gửi color info vì đã set hasColorPalette = false ở trên
+    }
+}
+
 // ==========================================
 // MESSAGE HANDLING
 // ==========================================
@@ -325,8 +388,10 @@ function onLayerChanged() {
     // Add click listeners to items in this layer
     addClickListenersToItems(activeLayer);
 
-    // Initial check
-    checkAndLogColors();
+    // Initial check (Wait for UI to update color box)
+    setTimeout(() => {
+        checkAndLogColors();
+    }, 300);
 
     try {
         chrome.runtime.sendMessage({
@@ -354,11 +419,22 @@ function addClickListenersToItems(layer) {
 }
 
 function checkAndLogColors(clickedItem = null) {
+    // Log danh sách màu để debug theo yêu cầu
+    const colorUl = document.querySelector('.imagemaker_colorBox .simplebar-content ul');
+    if (colorUl) {
+        const hasEmptyColor = colorUl.querySelector('li.emptycolor');
+        if (hasEmptyColor) {
+            console.log('🎨 Item này không có màu (Found li.emptycolor)');
+        } else {
+            console.log('🎨 Danh sách màu (ul) hiện tại:', colorUl);
+        }
+    }
+
     const colors = scanColors();
     const colorCount = colors.length;
     const colorHexList = colors.map(li => rgbToHex(li.style.background));
 
-    // console.log('🎨 Colors found:', colorCount, colorHexList);
+    console.log('🎨 Colors found:', colorCount, colorHexList);
 
     if (clickedItem) {
         const dataKey = clickedItem.getAttribute('data-key');
