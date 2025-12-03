@@ -170,6 +170,9 @@ chrome.webRequest.onCompleted.addListener(
 
       const url = details.url;
 
+      // ✅ CHỈ TẢI ẢNH TỪ PICREW.ME
+      if (!url.includes('picrew.me')) return;
+
       // Lọc thêm: Chỉ tải file có đuôi ảnh (png, jpg, webp)
       if (url.match(/\.(png)/i)) {
 
